@@ -1,0 +1,28 @@
+---
+#- import_playbook: 00_build_aci_tenant.yml
+
+#- hosts: localhost
+#  gather_facts: no
+#  tasks:
+#  - pause:
+#      seconds: 1
+      
+#- import_playbook: 06_attach_web_app_vm.yml
+#- import_playbook: 31_add_bastion.yml
+
+#- hosts: localhost
+#  gather_facts: no
+#  tasks:
+#  - pause:
+#      seconds: 1
+
+#- import_playbook: 32_attach_bastion_vm.yml
+
+# specific part for vendor integration
+
+- import_playbook: 53_create_asav_contract.yml
+- import_playbook: 54_create_asav_bds.yml
+- import_playbook: 55_create_asav_pbr_pol.yml
+- import_playbook: 56_create_asav_ldev.yml
+- import_playbook: 58_create_asav_sg_template.yml
+- import_playbook: 59_apply_asav_sg.yml

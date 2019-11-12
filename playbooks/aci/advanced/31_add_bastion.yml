@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Add bastion env to ACI tenant
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <fvBD name="{{ bastion_bd }}">
+            <fvSubnet ip="{{ bastion_ip }}"/>
+            <fvRsCtx tnFvCtxName="{{ vrf }}"/>
+          </fvBD>
+          
+          <fvAp name="Admin-Zone">
+            <fvAEPg name="Bastion">
+              <fvRsDomAtt tDn="uni/vmmp-VMware/dom-{{ apic_VMM }}"/>
+              <fvRsBd tnFvBDName="{{ bastion_bd }}"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>

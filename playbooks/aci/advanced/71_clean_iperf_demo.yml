@@ -1,0 +1,45 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+  tasks:
+
+  - name: Reset VM PG for iPerf client VM
+    vmware_guest:
+      hostname: "{{ vcenter_ip }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: no
+      name: iPerf-Client
+      datacenter: Datacenter
+      folder: iPerf
+      state: present
+      networks:
+      - name: "VM Network"
+
+  - name: Reset VM PG for iPerf server VM
+    vmware_guest:
+      hostname: "{{ vcenter_ip }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: no
+      name: iPerf-Server
+      datacenter: Datacenter
+      folder: iPerf
+      state: present
+      networks:
+      - name: "VM Network"
+
+  - name: Build ACI tenant
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="Monitoring-Demo" status="deleted"/>

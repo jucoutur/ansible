@@ -1,0 +1,96 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Apply Fortigate Service Graph
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+
+          <vnsLDevCtx ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" nodeNameOrLbl="FGT-dev-1">
+            <vnsRsLDevCtxToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-FGT"/>
+            
+            <vnsLIfCtx connNameOrLbl="provider">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-FGT-PBR-Policy-out"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-FGT/lIf-FGT-out"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-BD-Service-External"/>
+            </vnsLIfCtx>
+            
+            <vnsLIfCtx connNameOrLbl="consumer">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-FGT-PBR-Policy-in"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-FGT/lIf-FGT-in"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-BD-Service-Internal"/>
+            </vnsLIfCtx>
+          </vnsLDevCtx>
+
+          <vzBrCP name="{{ fgt_contract }}">
+            <vzSubj name="{{ subj_to_fgt }}">
+              <vzRsSubjGraphAtt tnVnsAbsGraphName="{{ fgt_sg }}"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <fvAp name="{{ AppProfile }}">
+            <fvAEPg name="{{ ClientEPG }}">
+          
+              <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="Network" locked="no" name="Network" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+
+                <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="StaticRoutesFolder" locked="no" name="StaticRoutesFolder" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+
+                  <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="IPv4DeviceRouter" locked="no" name="route-to-in" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+                    <vnsParamInst key="DeviceInterface" locked="no" mandatory="no" name="DeviceInterface" value="internal"/>
+                    <vnsParamInst key="Priority" locked="no" mandatory="no" name="AdministrativePriority" value="20"/>
+                    <vnsParamInst key="GatewayIPAddress" locked="no" mandatory="no" name="GatewayIPAddress" value="{{ fgt_gw_in }}"/>
+                    <vnsParamInst key="SequenceNumber" locked="no" mandatory="no" name="SequenceNumber" value="1"/>
+                    <vnsParamInst key="DestinationIPAddress" locked="no" mandatory="no" name="DestinationIPAddress" value="0.0.0.0"/>
+                    <vnsParamInst key="DestinationNetmask" locked="no" mandatory="no" name="DestinationNetmask" value="0.0.0.0"/>
+                    <vnsParamInst key="Weight" locked="no" mandatory="no" name="AdministrativeWeight" value="0"/>
+                    <vnsParamInst key="Distance" locked="no" mandatory="no" name="Distance" value="10"/>
+                  </vnsFolderInst>
+
+                  <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="IPv4DeviceRouter" locked="no" name="route-to-ext" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+                    <vnsParamInst key="DeviceInterface" locked="no" mandatory="no" name="DeviceInterface" value="external"/>
+                    <vnsParamInst key="Priority" locked="no" mandatory="no" name="Priority" value="10"/>
+                    <vnsParamInst key="GatewayIPAddress" locked="no" mandatory="no" name="GatewayIPAddress" value="{{ fgt_gw_out }}"/>
+                    <vnsParamInst key="SequenceNumber" locked="no" mandatory="no" name="SequenceNumber" value="2"/>
+                    <vnsParamInst key="DestinationIPAddress" locked="no" mandatory="no" name="DestinationIPAddress" value="0.0.0.0"/>
+                    <vnsParamInst key="DestinationNetmask" locked="no" mandatory="no" name="DestinationNetmask" value="0.0.0.0"/>
+                    <vnsParamInst key="Weight" locked="no" mandatory="no" name="AdministrativeWeight" value="0"/>
+                    <vnsParamInst key="Distance" locked="no" mandatory="no" name="Distance" value="10"/>
+                  </vnsFolderInst>
+                </vnsFolderInst>
+              </vnsFolderInst>
+
+              <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="VDOM-Folder" locked="no" name="vdom-folder" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+                <vnsParamInst key="hybrid" locked="no" mandatory="no" name="hybrid" value="YES"/>
+              </vnsFolderInst>
+
+              <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="DeviceInterface" locked="no" name="internal" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+                <vnsParamInst key="IPAddress" locked="no" mandatory="no" name="IPAddress" value="{{ fgt_ip_in }}"/>
+                <vnsParamInst key="IPNetmask" locked="no" mandatory="no" name="IPNetmask" value="{{ fgt_mask_in }}"/>
+                <vnsParamInst key="mode" locked="no" mandatory="no" name="mode" value="static"/>
+                <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="AllowAccess" locked="no" name="AllowAccess-Default" nodeNameOrLbl="FGT-dev-1" scopedBy="epg"/>
+              </vnsFolderInst>
+
+              <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="DeviceInterface" locked="no" name="external" nodeNameOrLbl="FGT-dev-1" scopedBy="epg">
+                <vnsParamInst key="IPAddress" locked="no" mandatory="no" name="IPAddress" value="{{ fgt_ip_out }}"/>
+                <vnsParamInst key="IPNetmask" locked="no" mandatory="no" name="IPNetmask" value="{{ fgt_mask_out }}"/>
+                <vnsParamInst key="mode" locked="no" mandatory="no" name="mode" value="static"/>
+                <vnsFolderInst ctrctNameOrLbl="{{ fgt_contract }}" graphNameOrLbl="{{ fgt_sg }}" key="AllowAccess" locked="no" name="AllowAccess-Default" nodeNameOrLbl="FGT-dev-1" scopedBy="epg"/>
+              </vnsFolderInst>
+          
+            </fvAEPg>
+          </fvAp>
+        </fvTenant>

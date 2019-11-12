@@ -1,0 +1,110 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml 
+    - vars/tenant_vars.yml
+  roles:
+    - role: avinetworks.avisdk   
+  tasks:
+     
+    - name: Avi Cloud | Setup VMWare Cloud with Write Access + SE Group
+      include_role:
+        name: avinetworks.aviconfig
+      vars:
+        avi_config_file: "cloud_config.yml"
+        avi_creds_file: "vars/creds.yml"
+
+    - name: Configure mgmt vrf
+      avi_vrfcontext:
+        api_version: "{{ api_version }}"
+        avi_credentials: "{{ avi_credentials }}"
+        name: management
+        system_default: true
+        cloud_ref: "/api/cloud/?name={{ AviCloudName }}"
+        tenant_ref: '/api/tenant/?name=admin'
+        static_routes:
+        - 
+          next_hop:
+            addr: "{{ mgmt_dgw }}"
+            type: V4
+          prefix:
+            ip_addr:
+              addr: 0.0.0.0
+              type: V4
+            mask: '0'
+          route_id: '1'
+
+    - name: Config Management Network for Cloud
+      avi_network:
+        api_version: "{{ api_version }}"
+        avi_credentials: "{{ avi_credentials }}"
+        name: "{{ mgmt_network }}"
+        vrf_context_ref: '/api/vrfcontext/?name=global'
+        tenant_ref: '/api/tenant/?name=admin'
+        cloud_ref: "/api/cloud/?name={{ AviCloudName }}"
+        configured_subnets:
+          - prefix:
+              ip_addr:
+                type: V4
+                addr: "{{ mgmt_subnet }}"
+              mask: "{{ mgmt_subnet_mask }}"
+            static_ranges:
+            - begin:
+                type: V4
+                addr: "{{ mgmt_start_addr }}"
+              end:
+                type: V4
+                addr: "{{ mgmt_end_addr }}"
+        exclude_discovered_subnets: false
+        dhcp_enabled: false
+
+    - name: reconfigure Cloud with Management Network
+      avi_cloud:
+        api_version: "{{ api_version }}"
+        avi_credentials: "{{ avi_credentials }}"
+        name: "{{ AviCloudName }}"
+        vtype: CLOUD_VCENTER
+        tenant_ref: '/api/tenant/?name=admin'
+        dhcp_enabled: false
+        license_type: "LIC_CORES"
+        apic_mode: true
+        apic_configuration:
+          se_tunnel_mode: true
+          apic_password: "{{ apic_password }}"
+          apic_username: "{{ apic_username }}"
+          context_aware: "SINGLE_CONTEXT"
+          apic_admin_tenant: "common"
+          apic_domain: "{{ apic_VMM }}"
+          apic_name: 
+            - "{{ apic_ip }}"
+        vcenter_configuration:
+          username: "{{ vcenter_username }}"
+          password: "{{ vcenter_password }}"
+          datacenter: "{{ vcenter_dc }}"
+          management_network: "/api/vimgrnwruntime?name={{ mgmt_network }}"
+          privilege: "WRITE_ACCESS"
+          vcenter_url: "{{ vcenter_ip }}"
+          management_ip_subnet:
+              mask: "{{ mgmt_subnet_mask }}"
+              ip_addr:
+                  type: V4
+                  addr: "{{ mgmt_subnet }}"
+
+    - name: Configure Service Engine Group
+      tags: SEG
+      avi_serviceenginegroup:
+        api_version: "{{ api_version }}"
+        avi_credentials: "{{ avi_credentials }}"
+        name: "{{ SEgroupname }}"
+        cloud_ref: "/api/cloud?name={{ AviCloudName }}"
+        vcenter_folder: "{{ vcenter_folder }}"
+        se_name_prefix: avi
+        realtime_se_metrics:
+          duration: 0
+          enabled: true
+        max_se: 4
+        buffer_se: 0
+        min_scaleout_per_vs: 1
+        max_scaleout_per_vs: 4 

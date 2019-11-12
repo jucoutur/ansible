@@ -1,0 +1,8 @@
+---
+### BGP ASN is unique per Leaf when chosing eBGP as the underlay protocol (one BGP ASN per Leaf)
+fabric_asn: 65000
+
+### access port vars
+access_ports:
+  - {port_name: Ethernet1/1, port_mode: access, port_desc: "*** test Ansible ***"}
+  - {port_name: Ethernet1/2, port_mode: access, port_desc: "*** test Ansible ***"}

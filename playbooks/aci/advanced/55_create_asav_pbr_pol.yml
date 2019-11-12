@@ -1,0 +1,29 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create ASAv PBR Policy
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsSvcCont>
+            <vnsSvcRedirectPol name="ASAv-PBR-Policy-Internal">
+              <vnsRedirectDest ip="{{ asav_ip_in }}" mac="{{ asav_mac_in }}"/>
+            </vnsSvcRedirectPol>
+            <vnsSvcRedirectPol name="ASAv-PBR-Policy-External">
+              <vnsRedirectDest ip="{{ asav_ip_out }}" mac="{{ asav_mac_out }}"/>
+            </vnsSvcRedirectPol>
+          </vnsSvcCont>
+        </fvTenant>

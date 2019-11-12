@@ -1,0 +1,5 @@
+---
+nxos_vteps_cli:
+  hosts:
+    Parlab-Leaf1:
+    Parlab-Leaf2:

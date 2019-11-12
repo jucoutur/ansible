@@ -1,0 +1,33 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create ASAv Logical Device
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsLDevVip contextAware="single-Context" devtype="VIRTUAL" funcType="GoTo" managed="no" name="ASAv-OneArm" svcType="FW">
+            <vnsRsALDevToDomP tDn="uni/vmmp-VMware/dom-{{ apic_VMM }}"/>
+            
+            <vnsCDev name="ASAv-OneArm-CDev" vcenterName="VCSA-ACIFabric1" vmName="ASAv-2">
+              <vnsCIf name="ASAv-g0/0" vnicName="Network adapter 2"/>
+            </vnsCDev>
+
+            <vnsLIf name="ASAv-OneArm">
+              <vnsRsCIfAttN tDn="uni/tn-Demo/lDevVip-ASAv-OneArm/cDev-ASAv-OneArm-CDev/cIf-[ASAv-g0/0]"/>
+            </vnsLIf>
+
+          </vnsLDevVip>
+        </fvTenant>

@@ -1,0 +1,4 @@
+---
+- import_playbook: 09_detach_vms.yml
+
+- import_playbook: 10_delete_aci_tenant.yml

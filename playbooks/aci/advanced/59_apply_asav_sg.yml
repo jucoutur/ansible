@@ -1,0 +1,47 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Apply ASAv Service Graph
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vnsLDevCtx ctrctNameOrLbl="{{ asav_contract }}" graphNameOrLbl="{{ asav_sg }}" nodeNameOrLbl="ASAv-Node">
+            <vnsRsLDevCtxToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-ASAv"/>
+            <vnsLIfCtx connNameOrLbl="consumer">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-ASAv-PBR-Policy-External"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-ASAv/lIf-ASAv-External"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-ASAv-External-BD"/>
+            </vnsLIfCtx>
+            <vnsLIfCtx connNameOrLbl="provider">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-ASAv-PBR-Policy-Internal"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-ASAv/lIf-ASAv-Internal"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-ASAv-Internal-BD"/>
+            </vnsLIfCtx>
+          </vnsLDevCtx>
+
+          <vzBrCP name="{{ asav_contract }}">
+            <vzSubj name="{{ subj_default }}">
+              <vzRsSubjFiltAtt status="deleted" tnVzFilterName="HTTP-Filter"/>
+              <vzRsSubjFiltAtt status="deleted" tnVzFilterName="SSH-Filter"/>
+            </vzSubj>
+            <vzSubj name="{{ subj_to_asav }}">
+              <vzRsSubjFiltAtt tnVzFilterName="HTTP-Filter"/>
+              <vzRsSubjFiltAtt tnVzFilterName="SSH-Filter"/>
+              <vzRsSubjGraphAtt tnVnsAbsGraphName="{{ asav_sg }}"/>
+            </vzSubj>
+          </vzBrCP>
+        </fvTenant>

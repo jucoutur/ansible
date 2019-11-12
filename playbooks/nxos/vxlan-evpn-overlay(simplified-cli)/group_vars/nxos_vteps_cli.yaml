@@ -1,0 +1,22 @@
+---
+### connection vars
+ansible_network_os: nxos
+ansible_connection: network_cli
+ansible_ssh_user: admin
+ansible_ssh_pass: cisco123
+
+### Global vars
+mtu: 9216
+
+### L2VNI vars
+net_name: MyNetwork
+net_vlan: 101
+net_vni: 10101
+net_mgroup: 225.1.2.3
+net_subnet: 10.0.1.254/24
+net_is_l3: true   # set to false if you want a L2-only L2VNI
+
+### L3VNI vars
+vrf_name: MyVRF
+vrf_vlan: 100
+vrf_vni: 10100

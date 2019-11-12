@@ -1,0 +1,32 @@
+---
+avi_config:
+  avi_cloud_discovery_wait: 60
+  cloud:
+    - name: "{{ AviCloudName }}"
+      api_version: "{{ api_version }}"
+      
+      vtype: CLOUD_VCENTER
+      dhcp_enabled: false
+      apic_mode: true
+      apic_configuration:
+        se_tunnel_mode: true
+        apic_password: "{{ apic_password }}"
+        apic_username: "{{ apic_username }}"
+        context_aware: "SINGLE_CONTEXT"
+        apic_admin_tenant: "common"
+        apic_domain: "{{ apic_VMM }}"
+        apic_name: 
+          - "{{ apic_ip }}"
+      license_type: "LIC_CORES"
+      vcenter_configuration:
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_dc }}"
+        management_network: "/api/vimgrnwruntime?name={{ mgmt_network }}"
+        privilege: "WRITE_ACCESS"
+        vcenter_url: "{{ vcenter_ip }}"
+        management_ip_subnet:
+          ip_addr:
+            addr: "{{ mgmt_subnet }}"
+            type: V4
+          mask: "{{ mgmt_subnet_mask }}"

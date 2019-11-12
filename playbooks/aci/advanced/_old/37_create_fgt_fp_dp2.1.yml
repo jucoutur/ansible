@@ -1,0 +1,69 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create Fortigate Function Profile
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+ 
+          <vnsAbsFuncProfContr>
+            <vnsAbsFuncProfGrp name="FGT_FunctionProfileGroup">
+              <vnsAbsFuncProf name="FGT_FunctionProfile" srcMode="">
+                <vnsRsProfToMFunc tDn="uni/infra/mDev-{{ fgt_dp }}/mFunc-Firewall"/>
+
+                <vnsAbsFuncCfg name="funcConfig">
+                  <vnsAbsFolder cardinality="unspecified" key="Network" locked="no" name="Network" profileBehaviorShared="no" scopedBy="epg">
+
+                    <vnsAbsFolder cardinality="unspecified" key="StaticRoutesFolder" locked="no" name="StaticRoutesFolder" profileBehaviorShared="no" scopedBy="epg">
+                      <vnsAbsFolder cardinality="unspecified" key="IPv4DeviceRouter" locked="no" name="IPv4StaticRoute" profileBehaviorShared="no" scopedBy="epg">
+                        <vnsAbsParam cardinality="unspecified" key="SequenceNumber" locked="no" mandatory="yes" name="SequenceNumber" value="0"/>
+                        <vnsAbsParam cardinality="unspecified" key="DestinationNetmask" locked="no" mandatory="yes" name="DestinationNetmask" value="0.0.0.0"/>
+                        <vnsAbsParam cardinality="unspecified" key="DeviceInterface" locked="no" mandatory="yes" name="DeviceInterface" value="internal"/>
+                        <vnsAbsParam cardinality="unspecified" key="DestinationIPAddress" locked="no" mandatory="yes" name="DestinationIPAddress" value="0.0.0.0"/>
+                        <vnsAbsParam cardinality="unspecified" key="Weight" locked="no" mandatory="yes" name="AdministrativeWeight" value="0"/>
+                        <vnsAbsParam cardinality="unspecified" key="Distance" locked="no" mandatory="yes" name="Distance" value="10"/>
+                        <vnsAbsParam cardinality="unspecified" key="Priority" locked="no" mandatory="yes" name="AdministrativePriority" value="0"/>
+                        <vnsAbsParam cardinality="unspecified" key="GatewayIPAddress" locked="no" mandatory="yes" name="GatewayIPAddress" value="0.0.0.0"/>
+                      </vnsAbsFolder>
+                    </vnsAbsFolder>
+                  </vnsAbsFolder>
+
+                  <vnsAbsFolder cardinality="unspecified" key="VDOM-Folder" locked="no" name="vdom-folder" profileBehaviorShared="no" scopedBy="epg">
+                    <vnsAbsParam cardinality="unspecified" key="hybrid" locked="no" mandatory="yes" name="hybrid" value="YES"/>
+                  </vnsAbsFolder>
+                </vnsAbsFuncCfg>
+
+                <vnsAbsDevCfg name="devConfig">
+                  <vnsAbsFolder cardinality="unspecified" key="DeviceInterface" locked="no" name="internal" profileBehaviorShared="no" scopedBy="epg">
+                    <vnsAbsParam cardinality="unspecified" key="IPAddress" locked="no" mandatory="no" name="IPAddress" value="0.0.0.0"/>
+                    <vnsAbsParam cardinality="unspecified" key="IPNetmask" locked="no" mandatory="no" name="IPNetmask" value="255.255.255.255"/>
+                    <vnsAbsParam cardinality="unspecified" key="mode" locked="no" mandatory="no" name="mode" value="static"/>
+                    <vnsAbsFolder cardinality="unspecified" key="AllowAccess" locked="no" name="AllowAccess-Default" profileBehaviorShared="no" scopedBy="epg"/>
+                  </vnsAbsFolder>
+
+                  <vnsAbsFolder cardinality="unspecified" key="DeviceInterface" locked="no" name="external" profileBehaviorShared="no" scopedBy="epg">
+                    <vnsAbsParam cardinality="unspecified" key="IPAddress" locked="no" mandatory="no" name="IPAddress" value="0.0.0.0"/>
+                    <vnsAbsParam cardinality="unspecified" key="IPNetmask" locked="no" mandatory="no" name="IPNetmask" value="255.255.255.255"/>
+                    <vnsAbsParam cardinality="unspecified" key="mode" locked="no" mandatory="no" name="mode" value="static"/>
+                    <vnsAbsFolder cardinality="unspecified" key="AllowAccess" locked="no" name="AllowAccess-Default" profileBehaviorShared="no" scopedBy="epg"/>
+                  </vnsAbsFolder>
+
+                </vnsAbsDevCfg>
+              </vnsAbsFuncProf>
+            </vnsAbsFuncProfGrp>
+          </vnsAbsFuncProfContr>
+
+        </fvTenant>

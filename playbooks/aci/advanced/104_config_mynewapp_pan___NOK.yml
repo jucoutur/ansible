@@ -1,0 +1,21 @@
+---
+- import_playbook: 00_build_aci_tenant.yml
+- hosts: localhost
+  gather_facts: no
+  tasks:
+  - pause:
+      seconds: 1
+- import_playbook: 06_attach_web_app_vm.yml
+- import_playbook: 31_add_bastion.yml
+- hosts: localhost
+  gather_facts: no
+  tasks:
+  - pause:
+      seconds: 1
+- import_playbook: 32_attach_bastion_vm.yml
+
+# specific part for vendor integration
+
+- import_playbook: 61_config_apply_pa_sg_aa_anycast.yml
+#- import_playbook: 62_config_apply_pa_sg_aa_podware.yml
+#- import_playbook: 63_config_apply_pa_sg_ap.yml

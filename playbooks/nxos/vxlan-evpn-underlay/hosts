@@ -1,0 +1,12 @@
+[all:vars]
+ansible_connection = local
+un=admin
+pwd=cisco123
+
+[spine]
+Parlab-Spine1
+Parlab-Spine2
+
+[leaf]
+Parlab-Leaf1
+Parlab-Leaf2

@@ -1,0 +1,77 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+  tasks:
+
+  - name: Build ACI tenant
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="Monitoring-Demo">
+
+          <fvCtx name="Default-VRF"/>
+
+          <fvBD name="Default-BD">
+            <fvSubnet ip="100.0.0.254/24"/>
+            <fvRsCtx tnFvCtxName="Default-VRF"/>
+          </fvBD>
+
+          <vzBrCP name="iPerf-Contract">
+            <vzSubj name="Allowed-Traffic">
+              <vzRsSubjFiltAtt directives="log" tnVzFilterName="Permit-IP-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <vzFilter name="Permit-IP-Filter">
+            <vzEntry name="IP-Entry" etherT="ip"/>
+          </vzFilter>
+
+          <fvAp name="iPerf">
+            <fvAEPg name="Client">
+              <fvRsDomAtt tDn="uni/vmmp-VMware/dom-DVS_Domain"/>
+              <fvRsCons tnVzBrCPName="iPerf-Contract"/>
+              <fvRsBd tnFvBDName="Default-BD"/>
+            </fvAEPg>
+            <fvAEPg name="Server">
+              <fvRsDomAtt tDn="uni/vmmp-VMware/dom-DVS_Domain"/>
+              <fvRsProv tnVzBrCPName="iPerf-Contract"/>
+              <fvRsBd tnFvBDName="Default-BD"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>
+
+  - name: Change VM PG for iPerf client VM
+    vmware_guest:
+      hostname: "{{ vcenter_ip }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: no
+      name: iPerf-Client
+      datacenter: Datacenter
+      folder: iPerf
+      state: present
+      networks:
+      - name: "Monitoring-Demo|iPerf|Client"
+
+  - name: Change VM PG for iPerf server VM
+    vmware_guest:
+      hostname: "{{ vcenter_ip }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: no
+      name: iPerf-Server
+      datacenter: Datacenter
+      folder: iPerf
+      state: present
+      networks:
+      - name: "Monitoring-Demo|iPerf|Server"

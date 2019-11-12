@@ -1,0 +1,48 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create contract from bastion to Web/App zones
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vzBrCP name="{{ fgt_contract }}">
+            <vzSubj name="{{ subj_to_fgt }}">
+              <vzRsSubjFiltAtt tnVzFilterName="Telnet-Filter"/>
+              <vzRsSubjFiltAtt tnVzFilterName="HTTP-Filter"/>
+            </vzSubj>
+            <vzSubj name="{{ subj_default }}">
+              <vzRsSubjFiltAtt tnVzFilterName="SSH-Filter"/>
+              <vzRsSubjFiltAtt tnVzFilterName="Ping-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <fvAp name="{{ AppProfile }}">
+            <fvAEPg name="{{ ClientEPG }}">
+              <fvRsProv tnVzBrCPName="{{ fgt_contract }}"/>
+            </fvAEPg>
+            <fvAEPg name="{{ ServerEPG }}">
+              <fvRsProv tnVzBrCPName="{{ fgt_contract }}"/>
+            </fvAEPg>
+          </fvAp>
+
+          <fvAp name="Admin-Zone">
+            <fvAEPg name="Bastion">
+              <fvRsCons tnVzBrCPName="{{ fgt_contract }}"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>

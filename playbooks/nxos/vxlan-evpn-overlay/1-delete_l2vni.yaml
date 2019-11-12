@@ -1,0 +1,50 @@
+---
+- name: Remove L2VNI
+  hosts: nxos_vteps_cli
+  gather_facts: false
+  tasks:
+
+    - name: Remove L2VNI from EVPN (control plane)
+      nxos_evpn_vni:
+        vni: "{{ net_vni }}"
+        state: absent
+
+    - name: Remove L2VNI from NVE interface (data plane)
+      nxos_vxlan_vtep_vni:
+        interface: nve1
+        vni: "{{ net_vni }}"
+        state: absent
+
+    - name: Reset access ports (1/3) - reset physif config ### issue = cannot remove description
+      nxos_interface:
+        name: "{{ item.port_name }}"
+        description: "not in use"
+        mode: layer2
+        mtu: 9216
+        admin_state: up
+      with_items: "{{ access_ports }}"
+
+    - name: Reset access ports (2/3) - reset default access config
+      nxos_l2_interface:
+        name: "{{ item.port_name }}"
+        mode: access
+        access_vlan: 1
+      with_items: "{{ access_ports }}"
+
+    - name: Reset access ports (3/3) - reset default trunk config
+      nxos_l2_interface:
+        name: "{{ item.port_name }}"
+        mode: trunk
+        trunk_allowed_vlans: none
+        native_vlan: 1
+      with_items: "{{ access_ports }}"
+
+    - name: Delete SVI
+      nxos_interface:
+        name: "Vlan{{ net_vlan }}"
+        state: absent
+
+    - name: Delete VLAN/L2VNI
+      nxos_vlan:
+        vlan_id: "{{ net_vlan }}"
+        state: absent

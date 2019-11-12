@@ -1,0 +1,65 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Add OSPF L3out to CSR1Kv
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <ospfIfPol name="OSPF_Interface_Policy" ctrl="advert-subnet,mtu-ignore" deadIntvl="40" helloIntvl="10" rexmitIntvl="5" xmitDelay="1" nwT="bcast" prio="1"/>
+
+          <vzBrCP name="{{ l3out_contract }}">
+            <vzSubj name="{{ subj_default }}">
+              <vzRsSubjFiltAtt tnVzFilterName="All-IP-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <l3extOut name="{{ l3out_name }}" enforceRtctrl="export">
+            <ospfExtP areaCost="1" areaCtrl="redistribute,summary" areaId="backbone" areaType="regular"/>
+            <l3extRsL3DomAtt tDn="uni/l3dom-{{ l3out_domain }}"/>
+            <l3extRsEctx tnFvCtxName="{{ vrf }}"/>
+            <l3extLNodeP name="Node_Profile">
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.122" rtrIdLoopBack="yes" tDn="topology/pod-2/node-122"/>
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.121" rtrIdLoopBack="yes" tDn="topology/pod-2/node-121"/>
+              <l3extLIfP name="Interface_Profile">
+                <ospfIfP authKeyId="1" authType="none">
+                  <ospfRsIfPol tnOspfIfPolName="OSPF_Interface_Policy"/>
+                </ospfIfP>
+                <l3extRsPathL3OutAtt addr="0.0.0.0" encap="vlan-99" encapScope="local" ifInstT="ext-svi" mode="regular" mtu="inherit" tDn="topology/pod-2/protpaths-121-122/pathep-[ESX-6_VPC_Interface_Policy_Group]">
+                  <l3extMember addr="99.0.0.1/24" side="A"/>
+                  <l3extMember addr="99.0.0.2/24" side="B"/>
+                </l3extRsPathL3OutAtt>
+              </l3extLIfP>
+            </l3extLNodeP>
+            
+            <l3extInstP name="Outside_Network">
+              <fvRsProv tnVzBrCPName="{{ l3out_contract }}"/>
+              <l3extSubnet ip="0.0.0.0/0"/>
+            </l3extInstP>
+          </l3extOut>
+
+          <fvBD name="{{ bd }}">
+            <fvSubnet ip="{{ bd_ip }}" scope="public"/>
+            <fvRsBDToOut tnL3extOutName="{{ l3out_name }}"/>
+          </fvBD>
+
+          <fvAp name="{{ AppProfile }}">
+            <fvAEPg name="{{ ClientEPG }}">
+              <fvRsCons tnVzBrCPName="{{ l3out_contract }}"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>

@@ -1,0 +1,47 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create contract from bastion to Web/App zones
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vzBrCP name="{{ asav_contract }}">
+            <vzSubj name="{{ subj_to_asav }}">
+            </vzSubj>
+            <vzSubj name="{{ subj_default }}">
+              <vzRsSubjFiltAtt tnVzFilterName="Ping-Filter"/>
+              <vzRsSubjFiltAtt tnVzFilterName="HTTP-Filter"/>
+              <vzRsSubjFiltAtt tnVzFilterName="SSH-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <fvAp name="{{ AppProfile }}">
+            <fvAEPg name="{{ ClientEPG }}">
+              <fvRsProv tnVzBrCPName="{{ asav_contract }}"/>
+            </fvAEPg>
+            <fvAEPg name="{{ ServerEPG }}">
+              <fvRsProv tnVzBrCPName="{{ asav_contract }}"/>
+            </fvAEPg>
+          </fvAp>
+
+          <fvAp name="Admin-Zone">
+            <fvAEPg name="Bastion">
+              <fvRsCons tnVzBrCPName="{{ asav_contract }}"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>

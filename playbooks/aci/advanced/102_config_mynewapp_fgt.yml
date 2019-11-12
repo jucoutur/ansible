@@ -1,0 +1,25 @@
+---
+#- import_playbook: 00_build_aci_tenant.yml
+#- hosts: localhost
+#  gather_facts: no
+#  tasks:
+#  - pause:
+#      seconds: 1
+#- import_playbook: 06_attach_web_app_vm.yml
+#- import_playbook: 31_add_bastion.yml
+#- hosts: localhost
+#  gather_facts: no
+#  tasks:
+#  - pause:
+#      seconds: 1
+#- import_playbook: 32_attach_bastion_vm.yml
+#
+# specific part for vendor integration
+
+- import_playbook: 33_create_fgt_contract.yml
+- import_playbook: 34_create_fgt_bds.yml
+- import_playbook: 35_create_fgt_pbr_pol.yml
+- import_playbook: 36_create_fgt_ldev.yml
+- import_playbook: 37_create_fgt_fp.yml
+- import_playbook: 38_create_fgt_sg_template.yml
+- import_playbook: 39_apply_fgt_sg.yml

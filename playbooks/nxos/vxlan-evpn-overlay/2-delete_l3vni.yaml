@@ -1,0 +1,40 @@
+---
+- name: Remove L3VNI
+  hosts: nxos_vteps_cli
+  gather_facts: false
+  tasks:
+
+    - name: Remove VRF AF from BGP VPNv4 (control plane)
+      nxos_bgp_af:
+        asn: "{{ fabric_asn }}"
+        vrf: "{{ vrf_name }}-{{ vrf_vni }}"
+        afi: ipv4
+        safi: unicast 
+        state: absent
+
+    - name: Remove VRF from BGP (control plane)
+      nxos_bgp:
+        asn: "{{ fabric_asn }}"
+        vrf: "{{ vrf_name }}-{{ vrf_vni }}"
+        state: absent
+
+    - name: Remove L3VNI from NVE interface (data plane)
+      nxos_vxlan_vtep_vni:
+        interface: nve1
+        vni: "{{ vrf_vni }}"
+        state: absent
+
+    - name: Delete SVI
+      nxos_interface:
+        name: "Vlan{{ vrf_vlan }}"
+        state: absent
+
+    - name: Delete VRF/L3VNI
+      nxos_vrf:
+        name: "{{ vrf_name }}-{{ vrf_vni }}"
+        state: absent
+
+    - name: Delete VLAN/L3VNI
+      nxos_vlan:
+        vlan_id: "{{ vrf_vlan }}"
+        state: absent

@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  roles:
+    - role: avinetworks.avisdk
+  tasks:
+
+  - name: Configure IP range for the SEs
+    avi_network:
+      api_version: "{{ api_version }}"
+      avi_credentials: "{{ avi_credentials }}"
+      name: "{{ Tenant }}:{{ bd }}"
+      vrf_context_ref: '/api/vrfcontext/?name=global'
+      tenant_ref: '/api/tenant/?name=admin' 
+      cloud_ref: "/api/cloud/?name={{ AviCloudName }}"
+      configured_subnets:
+        - prefix:
+            ip_addr:
+              type: V4
+              addr: "{{ bd_subnet }}"
+            mask: "{{ bd_subnet_mask }}"
+          static_ranges:
+          - begin:
+              type: V4
+              addr: "{{ bd_subnet_start_addr }}"
+            end:
+              type: V4
+              addr: "{{ bd_subnet_end_addr }}"
+      exclude_discovered_subnets: false
+      dhcp_enabled: false      

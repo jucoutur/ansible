@@ -1,0 +1,26 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Remove AVI Service Graph
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vzBrCP name="{{ Contract }}">
+            <vzSubj name="{{ subj_to_avi }}">
+              <vzRsSubjGraphAtt status="deleted" tnVnsAbsGraphName="{{ ServiceGraph }}"/>
+            </vzSubj>
+          </vzBrCP>
+        </fvTenant>
