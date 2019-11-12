@@ -1,0 +1,18 @@
+---
+- name: vSphere VMs network automation
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars/tenant_vars.yml
+
+  tasks:
+  - name: Change VM PG
+    vmware_guest:
+      hostname: 10.60.9.180
+      username: administrator@vsphere.local
+      password: C$sco123
+      validate_certs: no
+      name: Web1
+      state: present
+      networks:
+      - name: 'VM Network'

@@ -1,0 +1,14 @@
+---
+- name: Deploy topology using ACI model
+  hosts: '*apic1'
+  gather_facts: no
+
+  roles:
+  - role: datacenter.aci-model
+    aci_model_data: '{{ aci_topology }}'
+    tags: aci
+    validate_certs: no
+    use_proxy: no
+    use_ssl: no
+
+# vim: ts=2: sw=2: et

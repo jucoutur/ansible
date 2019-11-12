@@ -1,0 +1,126 @@
+[apic]
+10.60.9.225
+
+[apic:vars]
+
+##############################
+#### connection variables ####
+##############################
+
+ansible_connection=local
+username=admin
+password=cisco123
+validate_certs=no
+use_proxy=no
+use_ssl=no
+
+
+#####################################################
+#### configuration variables for Network Centric ####
+#####################################################
+
+state=present
+# options: present/absent/query
+
+tenant=AppCentric-demo
+
+vrf=Default-VRF
+
+policy_control_preference=unenforced
+# options: unenforced/enforced
+
+bd=IP-Namespace-BD
+
+enable_routing=True
+
+arp_flooding=False
+
+l2_unknown_unicast=proxy
+# options: proxy/flood
+
+ip_learning=True
+
+gateway=110.0.0.254
+
+mask=24
+
+scope=private
+# options: private/public/shared
+
+ap=MyNewApp
+
+epg_1=Web
+epg_2=App
+
+intra_epg_isolation=enforced
+# options: unenforced/enforced
+
+priority=unspecified
+# options: level1/level2/level3/unspecified
+
+domain_type=vmm
+# options: vmm/phys
+
+vm_provider=vmware
+# options: vmware/openstack/microsoft
+
+domain=DVS_Domain
+
+deploy_immediacy=lazy
+# options: immediate/lazy
+
+resolution_immediacy=lazy
+# options: immediate/lazy/pre-provision
+
+
+#########################################################
+#### configuration variables for Application Centric ####
+#########################################################
+
+contract=Web-to-App
+
+contract_scope=tenant
+# options: application-profile/context/global/tenant
+
+reverse_filter=True
+
+subject=Allowed_Traffic
+
+filter_1=Web_Filter
+filter_2=SSH_Filter
+filter_3=Ping_Filter
+
+filter_1_entry=Web_Entry
+filter_2_entry=SSH_Entry
+filter_3_entry=Ping_Entry
+
+ether_type=ip
+# options: arp/fcoe/ip/mac_security/mpls_ucast/unspecified
+
+filter_1_dst_port=80
+filter_2_dst_port=22
+filter_3_dst_port=unspecified
+
+filter_1_ip_protocol=tcp
+filter_2_ip_protocol=tcp
+filter_3_ip_protocol=icmp
+# options: eigrp/egp/icmp/icmpv6/igmp/igp/l2tp/ospfigp/pim/tcp/udp/unspecified
+
+stateful=no
+
+log=log
+
+contract_type_epg_1=consumer
+contract_type_epg_2=provider
+
+
+###########################################
+#### configuration variables for uSeg  ####
+###########################################
+
+uepg_name=MyuEPG
+
+allow_useg=useg
+# options: encap/useg
+
+uepg_state=yes

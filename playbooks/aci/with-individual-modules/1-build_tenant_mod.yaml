@@ -1,0 +1,217 @@
+---
+# AppCentric Demo playbook
+- name: Build Tenant
+  hosts: apic
+  connection: "{{ ansible_connection }}"
+  gather_facts: no
+
+  vars_prompt:
+  - name: "user_tenant"
+    prompt: "Tenant"
+    default: "AppCentric-Demo"
+    private: no
+  - name: "user_env"
+    prompt: "Environnement"
+    default: "PRD"
+    private: no
+
+  tasks:
+  - name: Create Tenant
+    aci_tenant:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      state: "{{ state }}"
+
+  - name: Create VRF
+    aci_vrf:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      vrf: "{{ vrf }}"
+      policy_control_preference: unenforced
+      state: "{{ state }}"
+
+  - name: Create BD
+    aci_bd:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      vrf: "{{ vrf }}"
+      bd: "{{ bd }}"
+      state: "{{ state }}"
+
+  - name: Create BD Subnet 
+    aci_bd_subnet:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      bd: "{{ bd }}"
+      gateway: "{{ gateway }}"
+      mask: "{{ mask }}"
+      state: "{{ state }}"
+
+  - name: Create ANP
+    aci_ap:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      state: "{{ state }}"
+
+  - name: Create EPG
+    aci_epg:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      bd: "{{ bd }}"
+      epg: "{{ item }}"
+      state: "{{ state }}"
+    with_items:
+      - "{{ epg_1 }}"
+      - "{{ epg_2 }}"
+
+  - name: Associate EPG to VMM Domain
+    aci_epg_to_domain:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      epg: "{{ item }}"
+      domain_type: "{{ domain_type }}"
+      vm_provider: "{{ vm_provider }}"
+      domain: "{{ domain }}"
+      state: "{{ state }}"
+    with_items:
+      - "{{ epg_1 }}"
+      - "{{ epg_2 }}"
+
+  - name: Create Filter
+    aci_filter:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      filter: "{{ item }}"
+      state: "{{ state }}"
+    with_items:
+      - "{{ filter_1 }}"
+      - "{{ filter_2 }}"
+      - "{{ filter_3 }}"
+
+  - name: Create Entry for Filter
+    aci_filter_entry:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      entry: "{{ item.entry }}"
+      filter: "{{ item.filter }}"
+      ether_type: "{{ ether_type }}"
+      ip_protocol: "{{ item.protocol }}"
+      dst_port: "{{ item.dst_port }}"
+      stateful: "{{ stateful }}"
+      state: "{{ state }}"
+    with_items:
+       - { entry: "{{ filter_1_entry }}", filter: "{{ filter_1 }}", protocol: "{{ filter_1_ip_protocol }}", dst_port: "{{ filter_1_dst_port }}" }
+       - { entry: "{{ filter_2_entry }}", filter: "{{ filter_2 }}", protocol: "{{ filter_2_ip_protocol }}", dst_port: "{{ filter_2_dst_port }}" }
+       - { entry: "{{ filter_3_entry }}", filter: "{{ filter_3 }}", protocol: "{{ filter_3_ip_protocol }}", dst_port: "{{ filter_3_dst_port }}" }
+
+  - name: Create Contract
+    aci_contract:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      contract: "{{ contract }}-{{ user_env }}"
+      state: "{{ state }}"
+
+  - name: Create Subject
+    aci_contract_subject:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      contract: "{{ contract }}-{{ user_env }}"
+      subject: "{{ subject }}"
+      state: "{{ state }}"
+
+  - name: Associate Filter to Subject
+    aci_contract_subject_to_filter:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      contract: "{{ contract }}-{{ user_env }}"
+      subject: "{{ subject }}"
+      filter: "{{ item }}"
+      log: "{{ log }}"
+      state: "{{ state }}"
+    vars:
+      filters_list:
+        - - "{{ filter_1 }}"
+          - "{{ filter_2 }}"
+          - "{{ filter_3 }}"
+    with_items: "{{ filters_list }}"
+
+  - name: Associate Contract to EPG
+    aci_epg_to_contract:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      epg: "{{ item.epg }}"
+      contract: "{{ contract }}-{{ user_env }}"
+      contract_type: "{{ item.contract_type }}"
+      state: "{{ state }}"
+    with_items:
+       - { epg: "{{ epg_1 }}", contract_type: "{{ contract_type_epg_1 }}"}
+       - { epg: "{{ epg_2 }}", contract_type: "{{ contract_type_epg_2 }}"}

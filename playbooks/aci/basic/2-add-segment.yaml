@@ -1,0 +1,51 @@
+---
+# NetCentric Demo playbook - add a Segment using the "aci_rest" Ansible ACI network module with XML payload
+- name: Add a new user segment
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+
+  vars_prompt:
+  - name: "user_tenant"
+    prompt: "Tenant"
+    default: "NetCentric-Demo"
+    private: no
+  - name: "user_env"
+    prompt: "Environnement"
+    default: "Production"
+    private: no
+  - name: "user_segment"
+    prompt: "Segment Id"
+    default: "205"
+    private: no
+  - name: "user_gateway"
+    prompt: "IP Default Gateway"
+    default: "10.205.0.254/24"
+    private: no
+
+  tasks:
+  - name: Create Segment
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ user_tenant }}">
+            <fvBD name="Production-Segment-{{ user_segment }}">
+                <fvSubnet ip="{{ user_gateway }}"/>
+                <fvRsCtx tnFvCtxName="{{ user_env }}"/>
+            </fvBD>
+            <fvAp name="{{ user_env }}">
+                <fvAEPg name="Segment-{{ user_segment }}">
+                    <fvRsDomAtt tDn="uni/vmmp-VMware/dom-DVS_Domain"/>
+                    <fvRsBd tnFvBDName="Production-Segment-{{ user_segment }}"/>
+                </fvAEPg>
+            </fvAp>
+        </fvTenant>
+    delegate_to: localhost

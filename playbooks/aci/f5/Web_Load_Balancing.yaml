@@ -1,0 +1,751 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+  - name: "APIC_IP"
+    prompt: "APIC IP address"
+    default: "10.60.9.225"
+    private: no
+  - name: "APIC_Username"
+    prompt: "Username"
+    default: "admin"
+    private: no
+  - name: "APIC_Password"
+    prompt: "Password"
+    default: "cisco123"
+    private: no
+  - name: "Tenant"
+    prompt: "Tenant"
+    default: "Demo"
+    private: no
+  - name: "Application"
+    prompt: "Application"
+    default: "MyNewApp"
+    private: no
+  - name: "Service_Graph"
+    prompt: "L4/L7 Service"
+    default: "Web_LB_Service"
+    private: no
+  - name: "Consumer_EPG"
+    prompt: "Consumer EPG"
+    default: "Web"
+    private: no
+  - name: "Provider_EPG"
+    prompt: "Provider EPG"
+    default: "App"
+    private: no
+  - name: "Contract"
+    prompt: "Contract"
+    default: "Web-App-Contract"
+    private: no
+  - name: "VIP"
+    prompt: "Virtual IP"
+    default: "150.0.0.123"
+    private: no
+  - name: "Algo"
+    prompt: "LB algorithm"
+    default: "ROUND_ROBIN"
+    private: no
+
+  tasks:
+
+  - name: Create Load Balancer subnet
+    aci_rest:
+      hostname: "{{ APIC_IP }}"
+      username: "{{ APIC_Username }}"
+      password: "{{ APIC_Password }}"
+      validate_certs: no
+      path: /api/mo/uni.json
+      method: post
+      content: |
+        {
+            "fvBD": {
+                "attributes": {
+                    "OptimizeWanBandwidth": "no",
+                    "arpFlood": "no",
+                    "descr": "",
+                    "dn": "uni/tn-{{ Tenant }}/BD-MyNewApp-BD",
+                    "epClear": "no",
+                    "epMoveDetectMode": "",
+                    "intersiteBumTrafficAllow": "no",
+                    "intersiteL2Stretch": "no",
+                    "ipLearning": "yes",
+                    "limitIpLearnToSubnets": "yes",
+                    "llAddr": "::",
+                    "mac": "00:22:BD:F8:19:FF",
+                    "mcastAllow": "no",
+                    "multiDstPktAct": "bd-flood",
+                    "name": "MyNewApp-BD",
+                    "nameAlias": "",
+                    "ownerKey": "",
+                    "ownerTag": "",
+                    "type": "regular",
+                    "unicastRoute": "yes",
+                    "unkMacUcastAct": "proxy",
+                    "unkMcastAct": "flood",
+                    "vmac": "not-applicable"
+                },
+                "children": [
+                    {
+                        "fvSubnet": {
+                            "attributes": {
+                                "ctrl": "nd",
+                                "descr": "",
+                                "ip": "150.0.0.254/24",
+                                "name": "",
+                                "nameAlias": "",
+                                "preferred": "no",
+                                "scope": "private",
+                                "virtual": "no"
+                            }
+                        }
+                    },
+                    {
+                        "fvSubnet": {
+                            "attributes": {
+                                "ctrl": "nd",
+                                "descr": "",
+                                "ip": "110.0.0.254/24",
+                                "name": "",
+                                "nameAlias": "",
+                                "preferred": "no",
+                                "scope": "public",
+                                "virtual": "no"
+                            }
+                        }
+                    },
+                    {
+                        "fvRsIgmpsn": {
+                            "attributes": {
+                                "tnIgmpSnoopPolName": ""
+                            }
+                        }
+                    },
+                    {
+                        "fvRsCtx": {
+                            "attributes": {
+                                "tnFvCtxName": "MyVRF"
+                            }
+                        }
+                    },
+                    {
+                        "fvRsBdToEpRet": {
+                            "attributes": {
+                                "resolveAct": "resolve",
+                                "tnFvEpRetPolName": ""
+                            }
+                        }
+                    },
+                    {
+                        "fvRsBDToNdP": {
+                            "attributes": {
+                                "tnNdIfPolName": ""
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    delegate_to: localhost
+
+  - name: Create Service Graph
+    aci_rest:
+      hostname: "{{ APIC_IP }}"
+      username: "{{ APIC_Username }}"
+      password: "{{ APIC_Password }}"
+      validate_certs: no
+      path: /api/mo/uni.json
+      method: post
+      content: |
+        {
+            "fvTenant": {
+                "attributes": {
+                    "dn": "uni/tn-{{ Tenant }}",
+                    "status": "modified"
+                },
+                "children": [
+                    {
+                        "fvAp": {
+                            "attributes": {
+                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}",
+                                "status": "modified"
+                            },
+                            "children": [
+                                {
+                                    "fvAEPg": {
+                                        "attributes": {
+                                            "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}",
+                                            "status": "modified"
+                                        },
+                                        "children": [
+                                            {
+                                                "vnsFolderInst": {
+                                                    "attributes": {
+                                                        "ctrctNameOrLbl": "{{ Contract }}",
+                                                        "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM",
+                                                        "graphNameOrLbl": "{{ Service_Graph }}",
+                                                        "key": "LocalTraffic",
+                                                        "name": "LTM",
+                                                        "nodeNameOrLbl": "N1",
+                                                        "status": "created,modified"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "vnsFolderInst": {
+                                                                "attributes": {
+                                                                    "ctrctNameOrLbl": "{{ Contract }}",
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Monitor",
+                                                                    "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                    "key": "Monitor",
+                                                                    "name": "Monitor",
+                                                                    "nodeNameOrLbl": "N1",
+                                                                    "status": "created,modified"
+                                                                },
+                                                                "children": [
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Monitor/ParamInst-FailByAttempts",
+                                                                                "key": "FailByAttempts",
+                                                                                "name": "FailByAttempts",
+                                                                                "status": "created,modified",
+                                                                                "value": "3"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Monitor/ParamInst-FrequencySeconds",
+                                                                                "key": "FrequencySeconds",
+                                                                                "name": "FrequencySeconds",
+                                                                                "status": "created,modified",
+                                                                                "value": "2"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Monitor/ParamInst-Type",
+                                                                                "key": "Type",
+                                                                                "name": "Type",
+                                                                                "status": "created,modified",
+                                                                                "value": "TCP"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsFolderInst": {
+                                                                "attributes": {
+                                                                    "ctrctNameOrLbl": "{{ Contract }}",
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-RealServers_Pool",
+                                                                    "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                    "key": "Pool",
+                                                                    "name": "RealServers_Pool",
+                                                                    "nodeNameOrLbl": "N1",
+                                                                    "status": "created,modified"
+                                                                },
+                                                                "children": [
+                                                                    {
+                                                                        "vnsFolderInst": {
+                                                                            "attributes": {
+                                                                                "ctrctNameOrLbl": "{{ Contract }}",
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-RealServers_Pool/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-PoolMonitor",
+                                                                                "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                                "key": "PoolMonitor",
+                                                                                "name": "PoolMonitor",
+                                                                                "nodeNameOrLbl": "N1",
+                                                                                "status": "created,modified"
+                                                                            },
+                                                                            "children": [
+                                                                                {
+                                                                                    "vnsCfgRelInst": {
+                                                                                        "attributes": {
+                                                                                            "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-RealServers_Pool/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-PoolMonitor/CfgRelInst-PoolMonitorRel",
+                                                                                            "key": "PoolMonitorRel",
+                                                                                            "name": "PoolMonitorRel",
+                                                                                            "status": "created,modified",
+                                                                                            "targetName": "LTM/Monitor"
+                                                                                        },
+                                                                                        "children": []
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-RealServers_Pool/ParamInst-LBMethod",
+                                                                                "key": "LBMethod",
+                                                                                "name": "LBMethod",
+                                                                                "status": "created,modified",
+                                                                                "value": "{{ Algo }}"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-LTM/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-RealServers_Pool/ParamInst-PoolType",
+                                                                                "key": "PoolType",
+                                                                                "name": "PoolType",
+                                                                                "status": "created,modified",
+                                                                                "value": "DYNAMIC"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "vnsFolderInst": {
+                                                    "attributes": {
+                                                        "ctrctNameOrLbl": "{{ Contract }}",
+                                                        "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener",
+                                                        "graphNameOrLbl": "{{ Service_Graph }}",
+                                                        "key": "Listener",
+                                                        "name": "Listener",
+                                                        "nodeNameOrLbl": "N1",
+                                                        "status": "created,modified"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "vnsFolderInst": {
+                                                                "attributes": {
+                                                                    "ctrctNameOrLbl": "{{ Contract }}",
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-SNAT",
+                                                                    "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                    "key": "SNAT",
+                                                                    "name": "SNAT",
+                                                                    "nodeNameOrLbl": "N1",
+                                                                    "status": "created,modified"
+                                                                },
+                                                                "children": [
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-SNAT/ParamInst-SNATType",
+                                                                                "key": "SNATType",
+                                                                                "name": "SNATType",
+                                                                                "status": "created,modified",
+                                                                                "value": "AUTOMAP"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsParamInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/ParamInst-DestinationIPAddress",
+                                                                    "key": "DestinationIPAddress",
+                                                                    "name": "DestinationIPAddress",
+                                                                    "status": "created,modified",
+                                                                    "value": "{{ VIP }}"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsParamInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/ParamInst-DestinationNetmask",
+                                                                    "key": "DestinationNetmask",
+                                                                    "name": "DestinationNetmask",
+                                                                    "status": "created,modified",
+                                                                    "value": "255.255.255.255"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsParamInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/ParamInst-DestinationPort",
+                                                                    "key": "DestinationPort",
+                                                                    "name": "DestinationPort",
+                                                                    "status": "created,modified",
+                                                                    "value": "80"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsParamInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Listener/ParamInst-Protocol",
+                                                                    "key": "Protocol",
+                                                                    "name": "Protocol",
+                                                                    "status": "created,modified",
+                                                                    "value": "TCP"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "vnsFolderInst": {
+                                                    "attributes": {
+                                                        "ctrctNameOrLbl": "{{ Contract }}",
+                                                        "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network",
+                                                        "graphNameOrLbl": "{{ Service_Graph }}",
+                                                        "key": "Network",
+                                                        "name": "Network",
+                                                        "nodeNameOrLbl": "N1",
+                                                        "status": "created,modified"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "vnsFolderInst": {
+                                                                "attributes": {
+                                                                    "ctrctNameOrLbl": "{{ Contract }}",
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-ExternalSelfIP",
+                                                                    "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                    "key": "ExternalSelfIP",
+                                                                    "name": "ExternalSelfIP",
+                                                                    "nodeNameOrLbl": "N1",
+                                                                    "status": "created,modified"
+                                                                },
+                                                                "children": [
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-ExternalSelfIP/ParamInst-Floating",
+                                                                                "key": "Floating",
+                                                                                "name": "Floating",
+                                                                                "status": "created,modified",
+                                                                                "value": "NO"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-ExternalSelfIP/ParamInst-PortLockdown",
+                                                                                "key": "PortLockdown",
+                                                                                "name": "PortLockdown",
+                                                                                "status": "created,modified",
+                                                                                "value": "NONE"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-ExternalSelfIP/ParamInst-SelfIPAddress",
+                                                                                "key": "SelfIPAddress",
+                                                                                "name": "SelfIPAddress",
+                                                                                "status": "created,modified",
+                                                                                "value": "150.0.0.100"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-ExternalSelfIP/ParamInst-SelfIPNetmask",
+                                                                                "key": "SelfIPNetmask",
+                                                                                "name": "SelfIPNetmask",
+                                                                                "status": "created,modified",
+                                                                                "value": "255.255.255.0"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsFolderInst": {
+                                                                "attributes": {
+                                                                    "ctrctNameOrLbl": "{{ Contract }}",
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Route",
+                                                                    "graphNameOrLbl": "{{ Service_Graph }}",
+                                                                    "key": "Route",
+                                                                    "name": "Route",
+                                                                    "nodeNameOrLbl": "N1",
+                                                                    "status": "created,modified"
+                                                                },
+                                                                "children": [
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Route/ParamInst-DestinationIPAddress",
+                                                                                "key": "DestinationIPAddress",
+                                                                                "name": "DestinationIPAddress",
+                                                                                "status": "created,modified",
+                                                                                "value": "0.0.0.0"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Route/ParamInst-DestinationNetmask",
+                                                                                "key": "DestinationNetmask",
+                                                                                "name": "DestinationNetmask",
+                                                                                "status": "created,modified",
+                                                                                "value": "0.0.0.0"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "vnsParamInst": {
+                                                                            "attributes": {
+                                                                                "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Network/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Route/ParamInst-NextHopIPAddress",
+                                                                                "key": "NextHopIPAddress",
+                                                                                "name": "NextHopIPAddress",
+                                                                                "status": "created,modified",
+                                                                                "value": "150.0.0.254"
+                                                                            },
+                                                                            "children": []
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "vnsFolderInst": {
+                                                    "attributes": {
+                                                        "ctrctNameOrLbl": "{{ Contract }}",
+                                                        "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-NetworkRelation",
+                                                        "graphNameOrLbl": "{{ Service_Graph }}",
+                                                        "key": "NetworkRelation",
+                                                        "name": "NetworkRelation",
+                                                        "nodeNameOrLbl": "N1",
+                                                        "status": "created,modified"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "vnsCfgRelInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-NetworkRelation/CfgRelInst-NetworkRel",
+                                                                    "key": "NetworkRel",
+                                                                    "name": "NetworkRel",
+                                                                    "status": "created,modified",
+                                                                    "targetName": "Network"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "vnsFolderInst": {
+                                                    "attributes": {
+                                                        "ctrctNameOrLbl": "{{ Contract }}",
+                                                        "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Pool",
+                                                        "graphNameOrLbl": "{{ Service_Graph }}",
+                                                        "key": "Pool",
+                                                        "name": "Pool",
+                                                        "nodeNameOrLbl": "N1",
+                                                        "status": "created,modified"
+                                                    },
+                                                    "children": [
+                                                        {
+                                                            "vnsCfgRelInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Pool/CfgRelInst-PoolRel",
+                                                                    "key": "PoolRel",
+                                                                    "name": "PoolRel",
+                                                                    "status": "created,modified",
+                                                                    "targetName": "LTM/RealServers_Pool"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        },
+                                                        {
+                                                            "vnsParamInst": {
+                                                                "attributes": {
+                                                                    "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Provider_EPG }}/FI_C-{{ Contract }}-G-{{ Service_Graph }}-F-N1-N-Pool/ParamInst-DestinationPort",
+                                                                    "key": "EPGDestinationPort",
+                                                                    "name": "DestinationPort",
+                                                                    "status": "created,modified",
+                                                                    "value": "80"
+                                                                },
+                                                                "children": []
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "fvRsProv": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tnVzBrCPName": "{{ Contract }}"
+                                                    },
+                                                    "children": []
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "fvAEPg": {
+                                        "attributes": {
+                                            "dn": "uni/tn-{{ Tenant }}/ap-{{ Application }}/epg-{{ Consumer_EPG }}",
+                                            "status": "modified"
+                                        },
+                                        "children": [
+                                            {
+                                                "fvRsCons": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tnVzBrCPName": "{{ Contract }}"
+                                                    },
+                                                    "children": []
+                                                }
+                                            }
+                                        ]
+                                    }
+
+
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "vzBrCP": {
+                            "attributes": {
+                                "dn": "uni/tn-{{ Tenant }}/brc-{{ Contract }}",
+                                "status": "modified"
+                            },
+                            "children": [
+                                {
+                                    "vzSubj": {
+                                        "attributes": {
+                                            "dn": "uni/tn-{{ Tenant }}/brc-{{ Contract }}/subj-Default-Subject",
+                                            "status": "modified"
+                                        },
+                                        "children": [
+                                            {
+                                                "vzRsSubjGraphAtt": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tnVnsAbsGraphName": "{{ Service_Graph }}"
+                                                    },
+                                                    "children": []
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "vnsLDevCtx": {
+                            "attributes": {
+                                "ctrctNameOrLbl": "{{ Contract }}",
+                                "dn": "uni/tn-{{ Tenant }}/ldevCtx-c-{{ Contract }}-g-{{ Service_Graph }}-n-N1",
+                                "graphNameOrLbl": "{{ Service_Graph }}",
+                                "nodeNameOrLbl": "N1",
+                                "rn": "ldevCtx-c-{{ Contract }}-g-{{ Service_Graph }}-n-N1",
+                                "status": "created,modified"
+                            },
+                            "children": [
+                                {
+                                    "vnsLIfCtx": {
+                                        "attributes": {
+                                            "connNameOrLbl": "consumer",
+                                            "dn": "uni/tn-{{ Tenant }}/ldevCtx-c-{{ Contract }}-g-{{ Service_Graph }}-n-N1/lIfCtx-c-consumer",
+                                            "rn": "lIfCtx-c-consumer",
+                                            "status": "created,modified"
+                                        },
+                                        "children": [
+                                            {
+                                                "vnsRsLIfCtxToBD": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tDn": "uni/tn-{{ Tenant }}/BD-MyNewApp-BD"
+                                                    },
+                                                    "children": []
+                                                }
+                                            },
+                                            {
+                                                "vnsRsLIfCtxToLIf": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tDn": "uni/tn-{{ Tenant }}/lDevVip-BIGIP-VE/lIf-One_Arm"
+                                                    },
+                                                    "children": []
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "vnsLIfCtx": {
+                                        "attributes": {
+                                            "connNameOrLbl": "provider",
+                                            "dn": "uni/tn-{{ Tenant }}/ldevCtx-c-{{ Contract }}-g-{{ Service_Graph }}-n-N1/lIfCtx-c-provider",
+                                            "rn": "lIfCtx-c-provider",
+                                            "status": "created,modified"
+                                        },
+                                        "children": [
+                                            {
+                                                "vnsRsLIfCtxToBD": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tDn": "uni/tn-{{ Tenant }}/BD-MyNewApp-BD"
+                                                    },
+                                                    "children": []
+                                                }
+                                            },
+                                            {
+                                                "vnsRsLIfCtxToLIf": {
+                                                    "attributes": {
+                                                        "status": "created,modified",
+                                                        "tDn": "uni/tn-{{ Tenant }}/lDevVip-BIGIP-VE/lIf-One_Arm"
+                                                    },
+                                                    "children": []
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "vnsRsLDevCtxToLDev": {
+                                        "attributes": {
+                                            "status": "created,modified",
+                                            "tDn": "uni/tn-{{ Tenant }}/lDevVip-BIGIP-VE"
+                                        },
+                                        "children": []
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    delegate_to: localhost

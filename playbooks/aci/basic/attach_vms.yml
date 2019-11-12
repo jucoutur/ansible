@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml   
+
+  vars_prompt:
+  - name: "user_tenant"
+    prompt: "Tenant name"
+    default: "Demo"
+    private: no
+  - name: "user_segment"
+    prompt: "Segment id"
+    default: "200"
+    private: no
+  - name: "user_vm"
+    prompt: "VM name"
+    default: "VM-200-1"
+    private: no
+
+  tasks:
+  - name: Change Port-Group for VM
+    vmware_guest:
+      hostname: "{{ vcenter_ip }}"
+      username: "{{ vcenter_username }}"
+      password: "{{ vcenter_password }}"
+      validate_certs: no
+      name: "{{ user_vm }}"
+      datacenter: Datacenter
+      folder: /Network-Centric
+      state: present
+      networks:
+      - name: "{{ user_tenant }}|Production|Segment-{{ user_segment }}"

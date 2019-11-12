@@ -1,0 +1,75 @@
+---
+# AppCentric Demo playbook
+- name: Move Tenant to Application Centric
+  hosts: apic
+  connection: "{{ ansible_connection }}"
+  gather_facts: no
+
+  vars_prompt:
+  - name: "user_tenant"
+    prompt: "Tenant"
+    default: "AppCentric-Demo"
+    private: no
+  - name: "user_env"
+    prompt: "Environnement"
+    default: "PRD"
+    private: no
+  - name: "user_uepg"
+    prompt: "Name of uEPG"
+    default: "my-uEPG"
+    private: no
+
+  tasks:
+  - name: Debug test
+    debug:
+      msg: "debug is working"
+
+  - name: Make sure VRF is in Enforced mode
+    aci_vrf:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      vrf: "{{ vrf }}"
+      policy_control_preference: enforced
+      state: "{{ state }}"
+
+  - name: Enable uSegmentation on base EPGs
+    aci_epg_to_domain:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      epg: "{{ item }}"
+      domain_type: "{{ domain_type }}"
+      vm_provider: "{{ vm_provider }}"
+      domain: "{{ domain }}"
+      deploy_immediacy: immediate
+      resolution_immediacy: immediate
+      allow_useg: "{{ allow_useg }}"
+      state: "{{ state }}"
+    with_items:
+      - "{{ epg_1 }}"
+      - "{{ epg_2 }}"
+
+  - name: Create uEPG
+    aci_epg_useg:
+      hostname: "{{ inventory_hostname }}"
+      username: "{{ username }}"
+      password: "{{ password }}"
+      validate_certs: "{{ validate_certs }}"
+      use_proxy: "{{ use_proxy }}"
+      use_ssl: "{{ use_ssl }}"
+      tenant: "{{ user_tenant }}"
+      ap: "{{ ap }}-{{ user_env }}"
+      epg: "{{ user_uepg }}"
+      bd: "{{ bd }}"
+      uepg: yes
+      state: "{{ state }}"

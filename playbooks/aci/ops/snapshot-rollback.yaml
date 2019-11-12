@@ -1,0 +1,53 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - avi/vars/creds.yml
+    - avi/vars/tenant_vars.yml
+  tasks:
+
+  - name: Snapshot/rollback Play
+    block:
+      - command: /bin/false
+      # - name: Create a Snapshot
+      #   aci_config_snapshot:
+      #     hostname: "{{ apic_ip }}"
+      #     username: "{{ apic_username }}"
+      #     password: "{{ apic_password }}"
+      #     use_ssl: no
+      #     validate_certs: no
+      #     state: present
+      #     export_policy: config_backup
+      #     description: MySnapshot
+
+      - debug:
+          msg: 'Snapshot done !'
+
+    rescue:
+      - name: Rollback Configuration
+        aci_config_rollback:
+          hostname: "{{ apic_ip }}"
+          username: "{{ apic_username }}"
+          password: "{{ apic_password }}"
+          use_ssl: no
+          validate_certs: no
+          state: rollback
+          snapshot: 'ce2_defaultOneTime-2018-12-04T22-08-53'
+          #export_policy: config_backup
+          import_policy: rollback_config
+          #import_mode: atomic
+          description: Rollback 2018-12-06 changes
+          #import_type: replace
+          #fail_on_decrypt: yes
+          #output_level: debug
+
+      - debug:
+          msg: 'Rollback done !'
+
+      - debug:
+          var: raw.stdout_lines
+
+    always:
+      - debug:
+          msg: "End of snapshot/rollback play"
