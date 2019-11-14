@@ -1,0 +1,47 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create Fortigate Logical Device cluster
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsLDevVip contextAware="multi-Context" devtype="VIRTUAL" funcType="GoTo" managed="yes" name="FGT" packageModel="FG-VM" svcType="FW">
+            <vnsRsALDevToDomP tDn="uni/vmmp-VMware/dom-{{ apic_VMM }}"/>
+            <vnsCMgmt host="{{ fgt_ip }}" port="443"/>
+            <vnsRsMDevAtt tDn="uni/infra/mDev-{{ fgt_dp }}"/>
+            <vnsCCred name="username" value="{{ fgt_username }}"/>
+            <vnsCCredSecret name="password" value="{{ fgt_password }}"/>
+
+            <vnsCDev name="FGT-Dev1" vcenterName="VCSA-ACIFabric1" vmName="FortiGate">
+              <vnsCMgmt host="{{ fgt_ip }}" port="443"/>
+              <vnsCCredSecret name="password" value="{{ fgt_password }}"/>
+              <vnsCCred name="username" value="{{ fgt_username }}"/>
+              <vnsCIf name="port3" vnicName="Network adapter 3"/>
+              <vnsCIf name="port2" vnicName="Network adapter 2"/>
+            </vnsCDev>
+
+            <vnsLIf name="FGT-External">
+              <vnsRsMetaIf tDn="uni/infra/mDev-{{ fgt_dp }}/mIfLbl-external"/>
+              <vnsRsCIfAttN tDn="uni/tn-{{ Tenant }}/lDevVip-FGT/cDev-FGT-Dev1/cIf-[port2]"/>
+            </vnsLIf>
+
+            <vnsLIf name="FGT-Internal">
+              <vnsRsMetaIf tDn="uni/infra/mDev-{{ fgt_dp }}/mIfLbl-internal"/>
+              <vnsRsCIfAttN tDn="uni/tn-{{ Tenant }}/lDevVip-FGT/cDev-FGT-Dev1/cIf-[port3]"/>
+            </vnsLIf>
+
+          </vnsLDevVip>
+        </fvTenant>

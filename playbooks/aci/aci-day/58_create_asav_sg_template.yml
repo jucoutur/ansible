@@ -1,0 +1,42 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create ASAv Service Graph Template
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsAbsGraph name="{{ asav_sg }}">
+            <vnsAbsTermNodeProv name="T2">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeProv>
+            <vnsAbsTermNodeCon name="T1">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeCon>
+            <vnsAbsNode funcTemplateType="FW_ROUTED" funcType="GoTo" managed="no" name="ASAv-Node" routingMode="Redirect">
+              <vnsRsNodeToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-ASAv"/>
+              <vnsAbsFuncConn name="consumer"/>
+              <vnsAbsFuncConn name="provider"/>
+            </vnsAbsNode>
+            <vnsAbsConnection name="C1" adjType="L3" connDir="provider" connType="external" directConnect="no" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ asav_sg }}/AbsNode-ASAv-Node/AbsFConn-consumer"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ asav_sg }}/AbsTermNodeCon-T1/AbsTConn"/>
+            </vnsAbsConnection>
+            <vnsAbsConnection name="C2" adjType="L3" connDir="provider" connType="external" directConnect="no" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ asav_sg }}/AbsNode-ASAv-Node/AbsFConn-provider"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ asav_sg }}/AbsTermNodeProv-T2/AbsTConn"/>
+            </vnsAbsConnection>
+          </vnsAbsGraph>
+        </fvTenant>

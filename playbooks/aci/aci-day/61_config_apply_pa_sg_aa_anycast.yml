@@ -1,0 +1,168 @@
+---
+- name: Deploy Palo Alto Service Graph - HA A/A Anycast mode
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+
+  tasks:
+
+  - name: Create contract from bastion to Web/App zones
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vzBrCP name="{{ pa_contract }}">
+            <vzSubj name="Exception-Traffic">
+              <vzRsSubjFiltAtt tnVzFilterName="Ping-Filter"/>
+            </vzSubj>
+            <vzSubj name="{{ subj_to_pa }}">
+              <vzRsSubjFiltAtt tnVzFilterName="All-IP-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <fvCtx name="{{ vrf }}">
+            <vzAny>
+              <vzRsAnyToProv tnVzBrCPName="{{ pa_contract }}"/>
+              <vzRsAnyToCons tnVzBrCPName="{{ pa_contract }}"/>
+            </vzAny>
+          </fvCtx>
+
+        </fvTenant>
+
+  - name: Create PA BD
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <fvBD name="PA-Service-BD">
+            <fvSubnet ip="{{ pa_gw_1 }}/{{ pa_mask_1 }}"/>
+            <fvRsCtx tnFvCtxName="{{ vrf }}"/>
+          </fvBD>
+        </fvTenant>
+
+  - name: Create PA PBR Policy
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsSvcCont>
+            <vnsSvcRedirectPol name="PA-PBR-Policy-OneArm-AA-Anycast" AnycastEnabled="yes">
+              <vnsRedirectDest ip="{{ pa_ip_1 }}" mac="{{ pa_mac_1 }}"/>
+            </vnsSvcRedirectPol>
+          </vnsSvcCont>
+        </fvTenant>
+
+  - name: Create PA Logical Device
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsLDevVip name="PA-VM-lDev1" contextAware="single-Context" devtype="VIRTUAL" funcType="GoTo" isCopy="no" managed="no" mode="legacy-Mode" svcType="FW">
+            <vnsRsALDevToDomP tDn="uni/vmmp-VMware/dom-{{ apic_VMM }}"/>
+            <vnsLIf name="PA-VM-OneArm-Lif">
+              <vnsRsCIfAttN tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1/cDev-PA-VM-1X-CDev/cIf-[PA-VM-OneArm-Cif]"/>
+              <vnsRsCIfAttN tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1/cDev-PA-VM-2X-CDev/cIf-[PA-VM-OneArm-Cif]"/>
+            </vnsLIf>
+            <vnsCDev name="PA-VM-2X-CDev" vcenterName="VCSA-ACIFabric1" vmName="PA-VM-2X">
+              <vnsCIf name="PA-VM-OneArm-Cif" vnicName="Network adapter 4"/>
+            </vnsCDev>
+            <vnsCDev name="PA-VM-1X-CDev" vcenterName="VCSA-ACIFabric1" vmName="PA-VM-1X">
+              <vnsCIf name="PA-VM-OneArm-Cif" vnicName="Network adapter 4"/>
+            </vnsCDev>
+          </vnsLDevVip>
+        </fvTenant>
+
+  - name: Create PA Service Graph Template
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <vnsAbsGraph name="{{ pa_sg_1 }}">
+            <vnsAbsTermNodeProv name="T2">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeProv>
+            <vnsAbsTermNodeCon name="T1">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeCon>
+            <vnsAbsNode name="PA-Node" funcTemplateType="FW_ROUTED" funcType="GoTo" managed="no" routingMode="Redirect">
+              <vnsRsNodeToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1"/>
+              <vnsAbsFuncConn name="consumer"/>
+              <vnsAbsFuncConn name="provider"/>
+            </vnsAbsNode>
+            <vnsAbsConnection name="C1" adjType="L3" connDir="provider" connType="external" directConnect="no" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ pa_sg_1 }}/AbsNode-PA-Node/AbsFConn-consumer"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ pa_sg_1 }}/AbsTermNodeCon-T1/AbsTConn"/>
+            </vnsAbsConnection>
+            <vnsAbsConnection name="C2" adjType="L3" connDir="provider" connType="external" directConnect="no" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ pa_sg_1 }}/AbsNode-PA-Node/AbsFConn-provider"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ pa_sg_1 }}/AbsTermNodeProv-T2/AbsTConn"/>
+            </vnsAbsConnection>
+          </vnsAbsGraph>
+        </fvTenant>
+
+  - name: Apply PA Service Graph
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vnsLDevCtx ctrctNameOrLbl="{{ pa_contract }}" graphNameOrLbl="{{ pa_sg_1 }}" nodeNameOrLbl="PA-Node">
+            <vnsRsLDevCtxToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1"/>
+            <vnsLIfCtx connNameOrLbl="consumer">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-PA-PBR-Policy-OneArm-AA-Anycast"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1/lIf-PA-VM-OneArm-Lif"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-PA-Service-BD"/>
+            </vnsLIfCtx>
+            <vnsLIfCtx connNameOrLbl="provider">
+              <vnsRsLIfCtxToSvcRedirectPol tDn="uni/tn-{{ Tenant }}/svcCont/svcRedirectPol-PA-PBR-Policy-OneArm-AA-Anycast"/>
+              <vnsRsLIfCtxToLIf tDn="uni/tn-{{ Tenant }}/lDevVip-PA-VM-lDev1/lIf-PA-VM-OneArm-Lif"/>
+              <vnsRsLIfCtxToBD tDn="uni/tn-{{ Tenant }}/BD-PA-Service-BD"/>
+            </vnsLIfCtx>
+          </vnsLDevCtx>
+
+          <vzBrCP name="{{ pa_contract }}">
+            <vzSubj name="{{ subj_to_pa }}">
+              <vzRsSubjGraphAtt tnVnsAbsGraphName="{{ pa_sg_1 }}"/>
+            </vzSubj>
+          </vzBrCP>
+        </fvTenant>

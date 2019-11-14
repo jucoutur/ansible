@@ -1,0 +1,29 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create ASAv BDs
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+          <fvBD name="ASAv-Internal-BD">
+            <fvSubnet ip="{{ asav_gw_in }}/{{ asav_mask_in }}"/>
+            <fvRsCtx tnFvCtxName="{{ vrf }}"/>
+          </fvBD>
+          <fvBD name="ASAv-External-BD">
+            <fvSubnet ip="{{ asav_gw_out }}/{{ asav_mask_out }}"/>
+            <fvRsCtx tnFvCtxName="{{ vrf }}"/>
+          </fvBD>
+        </fvTenant>

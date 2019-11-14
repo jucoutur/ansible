@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create Fortigate PBR policy
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vnsSvcCont>
+            <vnsSvcRedirectPol name="FGT-PBR-Policy-Internal">
+              <vnsRedirectDest ip="{{ fgt_ip_in }}" mac="{{ fgt_mac_in }}"/>
+            </vnsSvcRedirectPol>
+            
+            <vnsSvcRedirectPol name="FGT-PBR-Policy-External">
+              <vnsRedirectDest ip="{{ fgt_ip_out }}" mac="{{ fgt_mac_out }}"/>
+            </vnsSvcRedirectPol>
+          </vnsSvcCont>
+
+        </fvTenant>

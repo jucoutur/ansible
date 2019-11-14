@@ -1,0 +1,107 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Add OSPF L3out to CSR1Kv
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="Transit-mpod">
+
+          <fvCtx name="MyVRF"/>
+
+          <vzFilter name="All-IP-Filter">
+            <vzEntry name="All-IP-Entry" etherT="ip"/>
+          </vzFilter>
+
+          <vzBrCP name="Allowed-Transit">
+            <vzSubj name="Allowed-Traffic">
+              <vzRsSubjFiltAtt tnVzFilterName="All-IP-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <vzBrCP name="Advertise-Internal-Networks">
+            <vzSubj name="Allowed-Traffic">
+              <vzRsSubjFiltAtt tnVzFilterName="All-IP-Filter"/>
+            </vzSubj>
+          </vzBrCP>
+
+          <ospfIfPol name="OSPF_Interface_Policy" ctrl="advert-subnet,mtu-ignore" deadIntvl="40" helloIntvl="10" rexmitIntvl="5" xmitDelay="1" nwT="bcast" prio="1"/>
+
+          <l3extOut name="l3out_csr1kv1" enforceRtctrl="export">
+            <ospfExtP areaCost="1" areaCtrl="redistribute,summary" areaId="backbone" areaType="regular"/>
+            <l3extRsL3DomAtt tDn="uni/l3dom-CSR1Kv_Routed_Domain"/>
+            <l3extRsEctx tnFvCtxName="MyVRF"/>
+            <l3extLNodeP name="Node_Profile">
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.112" rtrIdLoopBack="yes" tDn="topology/pod-1/node-112"/>
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.111" rtrIdLoopBack="yes" tDn="topology/pod-1/node-111"/>
+              <l3extLIfP name="Interface_Profile">
+                <ospfIfP authKeyId="1" authType="none">
+                  <ospfRsIfPol tnOspfIfPolName="OSPF_Interface_Policy"/>
+                </ospfIfP>
+                <l3extRsPathL3OutAtt addr="0.0.0.0" encap="vlan-96" encapScope="local" ifInstT="ext-svi" mode="regular" mtu="inherit" tDn="topology/pod-1/protpaths-111-112/pathep-[ESX-1_VPC_Interface_Policy_Group]">
+                  <l3extMember addr="96.0.0.1/24" side="A"/>
+                  <l3extMember addr="96.0.0.2/24" side="B"/>
+                </l3extRsPathL3OutAtt>
+              </l3extLIfP>
+            </l3extLNodeP>
+            
+            <l3extInstP name="ExtEPG_csr1kv1">
+              <l3extSubnet ip="1.1.1.1/32"/>
+              <fvRsCons tnVzBrCPName="Allowed-Transit"/>
+              <fvRsProv tnVzBrCPName="Advertise-Internal-Networks"/>
+            </l3extInstP>
+          </l3extOut>
+
+          <l3extOut name="l3out_csr1kv2" enforceRtctrl="export">
+            <ospfExtP areaCost="1" areaCtrl="redistribute,summary" areaId="backbone" areaType="regular"/>
+            <l3extRsL3DomAtt tDn="uni/l3dom-CSR1Kv_Routed_Domain"/>
+            <l3extRsEctx tnFvCtxName="MyVRF"/>
+            <l3extLNodeP name="Node_Profile">
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.122" rtrIdLoopBack="yes" tDn="topology/pod-2/node-122"/>
+              <l3extRsNodeL3OutAtt rtrId="42.0.0.121" rtrIdLoopBack="yes" tDn="topology/pod-2/node-121"/>
+              <l3extLIfP name="Interface_Profile">
+                <ospfIfP authKeyId="1" authType="none">
+                  <ospfRsIfPol tnOspfIfPolName="OSPF_Interface_Policy"/>
+                </ospfIfP>
+                <l3extRsPathL3OutAtt addr="0.0.0.0" encap="vlan-97" encapScope="local" ifInstT="ext-svi" mode="regular" mtu="inherit" tDn="topology/pod-2/protpaths-121-122/pathep-[ESX-2_VPC_Interface_Policy_Group]">
+                  <l3extMember addr="97.0.0.1/24" side="A"/>
+                  <l3extMember addr="97.0.0.2/24" side="B"/>
+                </l3extRsPathL3OutAtt>
+              </l3extLIfP>
+            </l3extLNodeP>
+            
+            <l3extInstP name="ExtEPG_csr1kv2">
+              <l3extSubnet ip="2.2.2.2/32"/>
+              <fvRsProv tnVzBrCPName="Allowed-Transit"/>
+              <fvRsProv tnVzBrCPName="Advertise-Internal-Networks"/>
+            </l3extInstP>
+          </l3extOut>
+
+          <fvBD name="MyBD">
+            <fvSubnet ip="100.0.0.254/24" scope="public"/>
+            <fvRsCtx tnFvCtxName="MyVRF"/>
+            <fvRsBDToOut tnL3extOutName="l3out_csr1kv1"/>
+            <fvRsBDToOut tnL3extOutName="l3out_csr1kv2"/>
+          </fvBD>
+
+          <fvAp name="Internal">
+            <fvAEPg name="MyEPG">
+              <fvRsBd tnFvBDName="MyBD"/>
+              <fvRsDomAtt tDn="uni/vmmp-VMware/dom-DVS_Domain" instrImedcy="immediate" resImedcy="immediate"/>
+              <fvRsCons tnVzBrCPName="Advertise-Internal-Networks"/>
+            </fvAEPg>
+          </fvAp>
+
+        </fvTenant>

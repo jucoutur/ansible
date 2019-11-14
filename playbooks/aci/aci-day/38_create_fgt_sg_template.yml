@@ -1,0 +1,56 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/creds.yml
+    - vars/tenant_vars.yml
+  tasks:
+
+  - name: Create Fortigate Service Graph Template
+    aci_rest:
+      hostname: "{{ apic_ip }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_ssl: no
+      validate_certs: no
+      path: /api/mo/uni.xml
+      method: post
+      content: |
+        <fvTenant name="{{ Tenant }}">
+
+          <vnsAbsGraph name="{{ fgt_sg }}">
+            <vnsAbsNode funcTemplateType="FW_ROUTED" funcType="GoTo" managed="yes" name="FGT-Node" routingMode="Redirect">
+              <vnsRsNodeToMFunc tDn="uni/infra/mDev-{{ fgt_dp }}/mFunc-Firewall"/>
+              <vnsRsNodeToLDev tDn="uni/tn-{{ Tenant }}/lDevVip-FGT"/>
+              <vnsRsNodeToAbsFuncProf tDn="uni/tn-{{ Tenant }}/absFuncProfContr/absFuncProfGrp-FGT_FunctionProfileGroup/absFuncProf-FGT_FunctionProfile"/>
+
+              <vnsAbsFuncConn name="consumer">
+                <vnsRsMConnAtt tDn="uni/infra/mDev-{{ fgt_dp }}/mFunc-Firewall/mConn-internal"/>
+              </vnsAbsFuncConn>
+
+              <vnsAbsFuncConn name="provider">
+                <vnsRsMConnAtt tDn="uni/infra/mDev-{{ fgt_dp }}/mFunc-Firewall/mConn-external"/>
+              </vnsAbsFuncConn>
+            </vnsAbsNode>
+
+            <vnsAbsTermNodeProv name="T2">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeProv>
+
+            <vnsAbsTermNodeCon name="T1">
+              <vnsAbsTermConn name="1"/>
+            </vnsAbsTermNodeCon>
+
+            <vnsAbsConnection adjType="L3" connDir="provider" connType="external" directConnect="no" name="C2" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ fgt_sg }}/AbsTermNodeProv-T2/AbsTConn"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ fgt_sg }}/AbsNode-FGT-Node/AbsFConn-provider"/>
+            </vnsAbsConnection>
+
+            <vnsAbsConnection adjType="L3" connDir="provider" connType="external" directConnect="no" name="C1" unicastRoute="yes">
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ fgt_sg }}/AbsNode-FGT-Node/AbsFConn-consumer"/>
+              <vnsRsAbsConnectionConns tDn="uni/tn-{{ Tenant }}/AbsGraph-{{ fgt_sg }}/AbsTermNodeCon-T1/AbsTConn"/>
+            </vnsAbsConnection>
+          </vnsAbsGraph>
+
+        </fvTenant>
